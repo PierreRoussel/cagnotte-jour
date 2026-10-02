@@ -41,8 +41,9 @@ Sans ces variables, l’app reste 100 % localStorage (mode offline).
 1. Pousse le repo sur GitHub / GitLab.
 2. [app.netlify.com](https://app.netlify.com) → **Add site** → importe le repo.
 3. Build : `npm run build`, publish : `dist` (déjà dans `netlify.toml`).
-4. **Site settings → Environment variables** : ajoute `VITE_NHOST_SUBDOMAIN` et `VITE_NHOST_REGION`.
+4. **Pas de variables Netlify « secret »** pour `VITE_NHOST_*` : le secret scrubbing masquait le subdomain dans le JS et provoquait une fausse erreur CORS. La config publique est dans `src/lib/nhostConfig.ts`.
 5. Redéploie → URL du type `https://ton-site.netlify.app`.
+6. Dans Nhost → Authentication → URL Configuration, ajoute l’URL Netlify.
 
 ### Option B — Cloudflare Pages
 
