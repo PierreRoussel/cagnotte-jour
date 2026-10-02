@@ -1,0 +1,40 @@
+table:
+  name: budget_profiles
+  schema: public
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - user_id
+        - data
+        - updated_at
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+insert_permissions:
+  - role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - data
+      set:
+        user_id: x-hasura-User-Id
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - data
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
