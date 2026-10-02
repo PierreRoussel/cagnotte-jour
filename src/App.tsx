@@ -36,6 +36,7 @@ export default function App() {
     removeCharge,
     addSpend,
     removeSpend,
+    smoothDailyRate,
     syncStatus,
     syncError,
   } = useBudget()
@@ -127,10 +128,39 @@ export default function App() {
             {isSetup ? formatEuro(snapshot.available) : '—'}
           </h1>
           <p className="hero-copy">
-            {isSetup
-              ? `Ta cagnotte vivante cumule ${formatEuro(snapshot.dailyRate)} par jour. Ce qui n'est pas dépensé reste pour demain.`
-              : 'Indique ton salaire et tes charges pour démarrer ta cagnotte du mois.'}
+            {!isSetup
+              ? 'Indique ton salaire et tes charges pour démarrer ta cagnotte du mois.'
+              : snapshot.isSmoothed
+                ? `Quota lissé : ${formatEuro(snapshot.dailyRate)} par jour jusqu'à fin du mois. Ce qui n'est pas dépensé reste pour demain.`
+                : `Ta cagnotte vivante cumule ${formatEuro(snapshot.dailyRate)} par jour. Ce qui n'est pas dépensé reste pour demain.`}
           </p>
+
+          {isSetup && snapshot.available < -0.005 && (
+            <div className="recovery-chip" role="status">
+              <p>{recoveryCopy(snapshot)}</p>
+              {snapshot.canSmooth && snapshot.smoothedDailyRate != null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="recovery-action"
+                  onClick={smoothDailyRate}
+                >
+                  Lisser le quota journalier
+                  <span className="recovery-action-rate">
+                    → {formatEuro(snapshot.smoothedDailyRate)}/j
+                  </span>
+                </Button>
+              )}
+            </div>
+          )}
+
+          {isSetup && snapshot.isSmoothed && snapshot.available >= -0.005 && (
+            <p className="recovery-chip recovery-chip--ok" role="status">
+              Quota lissé à {formatEuro(snapshot.dailyRate)}/j jusqu&apos;à fin
+              du mois. Solde repart de zéro.
+            </p>
+          )}
 
           {isSetup && (
             <div className="hero-actions">
@@ -411,6 +441,23 @@ export default function App() {
       </footer>
     </div>
   )
+}
+
+function recoveryCopy(snapshot: {
+  dailyRate: number
+  daysUntilPositive: number | null
+  recoversThisMonth: boolean
+}): string {
+  if (snapshot.daysUntilPositive == null) {
+    return 'Impossible de remonter seule — le quota journalier est nul ou négatif.'
+  }
+  if (!snapshot.recoversThisMonth) {
+    return `Même sans dépenser, tu ne reviendras pas positif avant la fin du mois.`
+  }
+  if (snapshot.daysUntilPositive === 1) {
+    return 'Retour au positif demain si tu ne dépenses rien.'
+  }
+  return `Retour au positif dans ${snapshot.daysUntilPositive} jours si tu ne dépenses rien.`
 }
 
 function ChargeList({

@@ -30,6 +30,21 @@ type BudgetRow = {
   updated_at: string
 }
 
+function normalizeSmooth(raw: unknown): BudgetData['smooth'] {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as {
+    month?: unknown
+    fromDay?: unknown
+    spentBaseline?: unknown
+  }
+  if (typeof s.month !== 'string' || !/^\d{4}-\d{2}$/.test(s.month)) return null
+  const fromDay = Number(s.fromDay)
+  const spentBaseline = Number(s.spentBaseline)
+  if (!Number.isFinite(fromDay) || fromDay < 1 || fromDay > 31) return null
+  if (!Number.isFinite(spentBaseline)) return null
+  return { month: s.month, fromDay, spentBaseline }
+}
+
 function normalizeBudget(raw: unknown): BudgetData {
   if (!raw || typeof raw !== 'object') return { ...defaultData }
   const parsed = raw as Partial<BudgetData>
@@ -38,6 +53,7 @@ function normalizeBudget(raw: unknown): BudgetData {
     savings: Number(parsed.savings) || 0,
     charges: Array.isArray(parsed.charges) ? parsed.charges : [],
     spends: Array.isArray(parsed.spends) ? parsed.spends : [],
+    smooth: normalizeSmooth(parsed.smooth),
   }
 }
 

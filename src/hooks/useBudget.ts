@@ -4,6 +4,7 @@ import {
   type Charge,
   type ChargeType,
   type DailySpend,
+  buildMonthSmooth,
   computeCagnotte,
   createId,
   loadBudget,
@@ -140,8 +141,16 @@ export function useBudget() {
     }))
   }, [])
 
+  const smoothDailyRate = useCallback(() => {
+    setData((prev) => {
+      const smooth = buildMonthSmooth(prev)
+      if (!smooth) return prev
+      return { ...prev, smooth }
+    })
+  }, [])
+
   const resetAll = useCallback(() => {
-    setData({ salary: 0, savings: 0, charges: [], spends: [] })
+    setData({ salary: 0, savings: 0, charges: [], spends: [], smooth: null })
   }, [])
 
   return {
@@ -155,6 +164,7 @@ export function useBudget() {
     removeCharge,
     addSpend,
     removeSpend,
+    smoothDailyRate,
     resetAll,
   }
 }
