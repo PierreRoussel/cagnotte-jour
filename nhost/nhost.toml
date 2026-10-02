@@ -1,1 +1,25 @@
 [global]
+
+[hasura]
+version = 'v2.48.10-ce'
+
+[auth]
+version = '0.52.0'
+
+[auth.redirections]
+clientUrl = 'https://silly-lolly-800dbe.netlify.app'
+allowedUrls = [
+  'https://silly-lolly-800dbe.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:4173'
+]
+
+[auth.method.emailPassword]
+emailVerificationRequired = false
+
+[auth.constellation.settings]
+corsAllowedOrigins = [
+  'https://silly-lolly-800dbe.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:4173'
+]
