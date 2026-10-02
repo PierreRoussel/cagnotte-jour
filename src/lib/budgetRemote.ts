@@ -2,8 +2,8 @@ import type { NhostClient } from '@nhost/nhost-js'
 import { type BudgetData, defaultData } from '@/lib/budget'
 
 const GET_BUDGET = `
-  query GetBudgetProfile($userId: uuid!) {
-    budget_profiles(where: { user_id: { _eq: $userId } }, limit: 1) {
+  query GetBudgetProfile {
+    budget_profiles(limit: 1) {
       data
       updated_at
     }
@@ -11,9 +11,9 @@ const GET_BUDGET = `
 `
 
 const UPSERT_BUDGET = `
-  mutation UpsertBudgetProfile($userId: uuid!, $data: jsonb!) {
+  mutation UpsertBudgetProfile($data: jsonb!) {
     insert_budget_profiles_one(
-      object: { user_id: $userId, data: $data }
+      object: { data: $data }
       on_conflict: {
         constraint: budget_profiles_pkey
         update_columns: [data]
@@ -43,14 +43,13 @@ function normalizeBudget(raw: unknown): BudgetData {
 
 export async function fetchBudgetProfile(
   client: NhostClient,
-  userId: string,
+  _userId?: string,
 ): Promise<BudgetData | null> {
   try {
     const { body } = await client.graphql.request<{
       budget_profiles: BudgetRow[]
     }>({
       query: GET_BUDGET,
-      variables: { userId },
     })
     const row = body.data?.budget_profiles?.[0]
     if (!row) return null
@@ -62,13 +61,13 @@ export async function fetchBudgetProfile(
 
 export async function upsertBudgetProfile(
   client: NhostClient,
-  userId: string,
+  _userId: string | undefined,
   budget: BudgetData,
 ): Promise<void> {
   try {
     await client.graphql.request({
       query: UPSERT_BUDGET,
-      variables: { userId, data: budget },
+      variables: { data: budget },
     })
   } catch (err) {
     throw new Error(

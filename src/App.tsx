@@ -37,6 +37,7 @@ export default function App() {
     addSpend,
     removeSpend,
     syncStatus,
+    syncError,
   } = useBudget()
 
   const [salaryDraft, setSalaryDraft] = useState(
@@ -403,7 +404,7 @@ export default function App() {
                   : syncStatus === 'synced'
                     ? ' · à jour'
                     : syncStatus === 'error'
-                      ? ' · erreur (données locales conservées)'
+                      ? ` · erreur${syncError ? ` : ${syncError}` : ''}`
                       : ' · connecte-toi pour synchroniser'
             }`
           : 'Données dans le localStorage — ajoute Nhost pour la sync cloud.'}

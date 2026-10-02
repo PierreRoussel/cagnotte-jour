@@ -22,6 +22,7 @@ export function useBudget() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(
     configured ? 'loading' : 'local',
   )
+  const [syncError, setSyncError] = useState<string | null>(null)
   const skipCloudPush = useRef(false)
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export function useBudget() {
 
     void (async () => {
       setSyncStatus('loading')
+      setSyncError(null)
       try {
         const remote = await fetchBudgetProfile(nhost, userId)
         if (cancelled) return
@@ -56,8 +58,11 @@ export function useBudget() {
           setData(local)
         }
         setSyncStatus('synced')
-      } catch {
-        if (!cancelled) setSyncStatus('error')
+      } catch (err) {
+        if (!cancelled) {
+          setSyncStatus('error')
+          setSyncError(err instanceof Error ? err.message : 'Erreur de sync')
+        }
       } finally {
         skipCloudPush.current = false
       }
@@ -77,12 +82,14 @@ export function useBudget() {
     const client = nhost
     const uid = userId
     setSyncStatus('syncing')
+    setSyncError(null)
     const timer = window.setTimeout(async () => {
       try {
         await upsertBudgetProfile(client, uid, data)
         setSyncStatus('synced')
-      } catch {
+      } catch (err) {
         setSyncStatus('error')
+        setSyncError(err instanceof Error ? err.message : 'Erreur de sync')
       }
     }, 700)
 
@@ -141,6 +148,7 @@ export function useBudget() {
     data,
     snapshot,
     syncStatus,
+    syncError,
     setSalary,
     setSavings,
     addCharge,

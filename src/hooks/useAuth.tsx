@@ -76,6 +76,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       if (body.mfa) return 'MFA requise (non supportée dans cette mini-app)'
       if (!body.session) return 'Session absente — vérifie ton email'
+      nhost.sessionStorage.set(body.session)
       setSession(nhost.getUserSession())
       return null
     } catch (err) {
@@ -96,6 +97,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!body.session) {
         return 'Compte créé — vérifie ton email puis reconnecte-toi'
       }
+      nhost.sessionStorage.set(body.session)
       setSession(nhost.getUserSession())
       return null
     } catch (err) {
