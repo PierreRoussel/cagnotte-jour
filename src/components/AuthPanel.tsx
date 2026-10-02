@@ -1,12 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { LogIn, LogOut, UserPlus } from 'lucide-react'
-import {
-  useAuthenticationStatus,
-  useSignInEmailPassword,
-  useSignOut,
-  useSignUpEmailPassword,
-  useUserEmail,
-} from '@nhost/react'
+import { useAuth } from '@/hooks/useAuth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,18 +14,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { isNhostConfigured } from '@/lib/nhost'
 
 export function AuthPanel() {
-  if (!isNhostConfigured) return null
+  const { configured, isLoading, isAuthenticated, email, signOut } = useAuth()
 
-  return <AuthPanelInner />
-}
-
-function AuthPanelInner() {
-  const { isAuthenticated, isLoading } = useAuthenticationStatus()
-  const email = useUserEmail()
-  const { signOut } = useSignOut()
+  if (!configured) return null
 
   if (isLoading) {
     return (
@@ -47,12 +34,7 @@ function AuthPanelInner() {
         <Badge variant="secondary" className="auth-badge max-w-[12rem] truncate">
           {email || 'Connecté'}
         </Badge>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => signOut()}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => signOut()}>
           <LogOut />
           Déconnexion
         </Button>
@@ -64,43 +46,37 @@ function AuthPanelInner() {
 }
 
 function AuthDialog() {
+  const { signIn, signUp } = useAuth()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-
-  const {
-    signInEmailPassword,
-    isLoading: signingIn,
-    isError: signInError,
-    error: signInErr,
-  } = useSignInEmailPassword()
-
-  const {
-    signUpEmailPassword,
-    isLoading: signingUp,
-    isError: signUpError,
-    error: signUpErr,
-    needsEmailVerification,
-  } = useSignUpEmailPassword()
-
-  const busy = signingIn || signingUp
-  const errMessage =
-    (signInError && signInErr?.message) ||
-    (signUpError && signUpErr?.message) ||
-    null
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (mode === 'signin') {
-      await signInEmailPassword(email.trim(), password)
-    } else {
-      await signUpEmailPassword(email.trim(), password)
-    }
-    if (!needsEmailVerification) {
+    setBusy(true)
+    setError(null)
+    setInfo(null)
+    const result =
+      mode === 'signin'
+        ? await signIn(email.trim(), password)
+        : await signUp(email.trim(), password)
+    setBusy(false)
+
+    if (!result) {
       setOpen(false)
       setPassword('')
+      return
     }
+
+    if (result.includes('vérifie ton email')) {
+      setInfo(result)
+      return
+    }
+    setError(result)
   }
 
   return (
@@ -147,21 +123,19 @@ function AuthDialog() {
                 required
               />
             </div>
-            {needsEmailVerification && (
-              <p className="hint">
-                Vérifie ta boîte mail pour activer le compte, puis reconnecte-toi.
-              </p>
-            )}
-            {errMessage && <p className="auth-error">{errMessage}</p>}
+            {info && <p className="hint">{info}</p>}
+            {error && <p className="auth-error">{error}</p>}
           </div>
 
           <DialogFooter className="auth-dialog-footer">
             <Button
               type="button"
               variant="ghost"
-              onClick={() =>
+              onClick={() => {
                 setMode((m) => (m === 'signin' ? 'signup' : 'signin'))
-              }
+                setError(null)
+                setInfo(null)
+              }}
             >
               {mode === 'signin' ? (
                 <>

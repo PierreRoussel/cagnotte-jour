@@ -19,7 +19,7 @@ $env:NHOST_ADMIN_SECRET="ton-secret"; npm run nhost:apply
 
 Le script exécute `nhost/migrations/.../up.sql`, tracke `budget_profiles` et crée les permissions rôle `user`. Les fichiers dans `nhost/metadata/` servent aux déploiements Git Nhost (`nhost deployments new`).
 
-5. **Auth** : active *Email + password* (Settings → Authentication).
+5. **Auth** : active *Email + password*. Pour tester sans mail, désactive temporairement *Require email verification* dans Nhost → Authentication → Settings.
 
 > Le CLI Nhost ne tourne pas nativement sous Windows ; `npm run nhost:apply` remplace le SQL editor.
 

@@ -1,11 +1,6 @@
 import type { PropsWithChildren } from 'react'
-import { NhostProvider } from '@nhost/react'
-import { isNhostConfigured, nhost } from '@/lib/nhost'
+import { AuthProvider } from '@/hooks/useAuth'
 
 export function AppProviders({ children }: PropsWithChildren) {
-  if (!isNhostConfigured || !nhost) {
-    return children
-  }
-
-  return <NhostProvider nhost={nhost}>{children}</NhostProvider>
+  return <AuthProvider>{children}</AuthProvider>
 }

@@ -11,76 +11,75 @@ import {
   todayKey,
 } from '@/lib/budget'
 import { fetchBudgetProfile, upsertBudgetProfile } from '@/lib/budgetRemote'
-import { isNhostConfigured, nhost } from '@/lib/nhost'
+import { useAuth } from '@/hooks/useAuth'
+import { nhost } from '@/lib/nhost'
 
 export type SyncStatus = 'local' | 'loading' | 'syncing' | 'synced' | 'error'
 
 export function useBudget() {
+  const { configured, isAuthenticated, userId } = useAuth()
   const [data, setData] = useState<BudgetData>(() => loadBudget())
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(
-    isNhostConfigured ? 'loading' : 'local',
+    configured ? 'loading' : 'local',
   )
   const skipCloudPush = useRef(false)
-  const hydrateRef = useRef<(userId: string) => Promise<void>>(async () => {})
-
-  hydrateRef.current = async (userId: string) => {
-    if (!nhost) return
-    setSyncStatus('loading')
-    try {
-      const remote = await fetchBudgetProfile(nhost, userId)
-      const local = loadBudget()
-      skipCloudPush.current = true
-      if (remote) {
-        setData(remote)
-      } else if (
-        local.salary > 0 ||
-        local.charges.length > 0 ||
-        local.spends.length > 0
-      ) {
-        await upsertBudgetProfile(nhost, userId, local)
-        setData(local)
-      }
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('error')
-    } finally {
-      skipCloudPush.current = false
-    }
-  }
 
   useEffect(() => {
-    if (!nhost) return
-
-    const user = nhost.auth.getUser()
-    if (user?.id) {
-      void hydrateRef.current(user.id)
-    } else {
+    if (!nhost || !configured) {
       setSyncStatus('local')
+      return
     }
 
-    const unsubscribe = nhost.auth.onAuthStateChanged((_event, session) => {
-      if (session?.user?.id) {
-        void hydrateRef.current(session.user.id)
-      } else {
-        setSyncStatus('local')
-      }
-    })
-    return () => {
-      unsubscribe()
+    if (!isAuthenticated || !userId) {
+      setSyncStatus('local')
+      return
     }
-  }, [])
+
+    let cancelled = false
+
+    void (async () => {
+      setSyncStatus('loading')
+      try {
+        const remote = await fetchBudgetProfile(nhost, userId)
+        if (cancelled) return
+        const local = loadBudget()
+        skipCloudPush.current = true
+        if (remote) {
+          setData(remote)
+        } else if (
+          local.salary > 0 ||
+          local.charges.length > 0 ||
+          local.spends.length > 0
+        ) {
+          await upsertBudgetProfile(nhost, userId, local)
+          if (cancelled) return
+          setData(local)
+        }
+        setSyncStatus('synced')
+      } catch {
+        if (!cancelled) setSyncStatus('error')
+      } finally {
+        skipCloudPush.current = false
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [configured, isAuthenticated, userId])
 
   useEffect(() => {
     saveBudget(data)
 
-    const userId = nhost?.auth.getUser()?.id
-    if (!nhost || !userId || skipCloudPush.current) return
+    if (!nhost || !configured || !isAuthenticated || !userId) return
+    if (skipCloudPush.current) return
 
-    setSyncStatus('syncing')
     const client = nhost
+    const uid = userId
+    setSyncStatus('syncing')
     const timer = window.setTimeout(async () => {
       try {
-        await upsertBudgetProfile(client, userId, data)
+        await upsertBudgetProfile(client, uid, data)
         setSyncStatus('synced')
       } catch {
         setSyncStatus('error')
@@ -88,7 +87,7 @@ export function useBudget() {
     }, 700)
 
     return () => window.clearTimeout(timer)
-  }, [data])
+  }, [data, configured, isAuthenticated, userId])
 
   const snapshot = useMemo(() => computeCagnotte(data), [data])
 

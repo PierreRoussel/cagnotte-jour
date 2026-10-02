@@ -1,4 +1,4 @@
-import type { NhostClient } from '@nhost/react'
+import type { NhostClient } from '@nhost/nhost-js'
 import { type BudgetData, defaultData } from '@/lib/budget'
 
 const GET_BUDGET = `
@@ -42,46 +42,49 @@ function normalizeBudget(raw: unknown): BudgetData {
 }
 
 export async function fetchBudgetProfile(
-  nhost: NhostClient,
+  client: NhostClient,
   userId: string,
 ): Promise<BudgetData | null> {
-  const { data, error } = await nhost.graphql.request<{
-    budget_profiles: BudgetRow[]
-  }>(GET_BUDGET, { userId })
-
-  if (error) {
-    throw new Error(formatGraphqlError(error, 'Impossible de charger le budget.'))
+  try {
+    const { body } = await client.graphql.request<{
+      budget_profiles: BudgetRow[]
+    }>({
+      query: GET_BUDGET,
+      variables: { userId },
+    })
+    const row = body.data?.budget_profiles?.[0]
+    if (!row) return null
+    return normalizeBudget(row.data)
+  } catch (err) {
+    throw new Error(formatGraphqlError(err, 'Impossible de charger le budget.'))
   }
-
-  const row = data?.budget_profiles?.[0]
-  if (!row) return null
-  return normalizeBudget(row.data)
 }
 
 export async function upsertBudgetProfile(
-  nhost: NhostClient,
+  client: NhostClient,
   userId: string,
   budget: BudgetData,
 ): Promise<void> {
-  const { error } = await nhost.graphql.request(UPSERT_BUDGET, {
-    userId,
-    data: budget,
-  })
-
-  if (error) {
+  try {
+    await client.graphql.request({
+      query: UPSERT_BUDGET,
+      variables: { userId, data: budget },
+    })
+  } catch (err) {
     throw new Error(
-      formatGraphqlError(error, 'Impossible de sauvegarder le budget.'),
+      formatGraphqlError(err, 'Impossible de sauvegarder le budget.'),
     )
   }
 }
 
 function formatGraphqlError(error: unknown, fallback: string): string {
-  if (Array.isArray(error)) {
-    return error[0]?.message ?? fallback
+  if (error && typeof error === 'object' && 'body' in error) {
+    const body = (error as { body?: unknown }).body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors?: { message?: string }[] }).errors
+      if (errors?.[0]?.message) return errors[0].message
+    }
   }
-  if (error && typeof error === 'object' && 'message' in error) {
-    const msg = (error as { message?: string }).message
-    if (msg) return msg
-  }
+  if (error instanceof Error && error.message) return error.message
   return fallback
 }
