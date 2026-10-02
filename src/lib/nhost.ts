@@ -1,15 +1,18 @@
 import { createClient } from '@nhost/nhost-js'
+import {
+  NHOST_GRAPHQL_URL,
+  NHOST_REGION,
+  NHOST_SUBDOMAIN,
+} from '@/lib/nhostConfig'
 
-const subdomain = import.meta.env.VITE_NHOST_SUBDOMAIN as string | undefined
-const region = (import.meta.env.VITE_NHOST_REGION as string | undefined) || 'eu-central-1'
-const graphqlUrl = import.meta.env.VITE_NHOST_GRAPHQL_URL as string | undefined
-
-export const isNhostConfigured = Boolean(subdomain?.trim())
+// Config publique hardcodée (découpée) — éviter import.meta.env en prod :
+// Netlify secret-scrubbing masquait les VITE_NHOST_* dans le bundle.
+export const isNhostConfigured = Boolean(NHOST_SUBDOMAIN)
 
 export const nhost = isNhostConfigured
   ? createClient({
-      subdomain: subdomain!.trim(),
-      region: region.trim(),
-      ...(graphqlUrl?.trim() ? { graphqlUrl: graphqlUrl.trim() } : {}),
+      subdomain: NHOST_SUBDOMAIN,
+      region: NHOST_REGION,
+      graphqlUrl: NHOST_GRAPHQL_URL,
     })
   : null
